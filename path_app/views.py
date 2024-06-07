@@ -24,9 +24,7 @@ def heuristic(u, v):
 with open('path_app/oran_ways.geojson', 'r', encoding='utf-8') as f:
     data = json.load(f)
 
-
 G = nx.Graph()
-
 
 for feature in data['features']:
     if feature['geometry']['type'] == 'LineString':
@@ -36,10 +34,8 @@ for feature in data['features']:
             v = tuple(way_coords[i + 1]) 
             distance = haversine_distance(v[1], v[0], u[1], u[0])  
             G.add_edge(v, u, weight=distance)
+            
 def find_nearest_node(G, lat, lon):
-    """
-    Find the nearest node in the graph G to the specified latitude and longitude.
-    """
     min_dist = float('inf')
     nearest_node = None
     for node in G.nodes:
@@ -84,7 +80,6 @@ def calculate_path(request):
             shortest_path = nx.astar_path(G, start_node, end_node, weight='weight', heuristic=heuristic)
 
             distance = calculate_distance(shortest_path)
-            
 
             estimated_time_hours = distance / WALKING_SPEED_KMH
             estimated_time_minutes = estimated_time_hours * 60
