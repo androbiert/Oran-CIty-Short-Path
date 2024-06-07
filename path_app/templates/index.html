@@ -1,0 +1,242 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script>
+        L_NO_TOUCH = false;
+        L_DISABLE_3D = false;
+    </script>
+    <style>html, body {width: 100%; height: 100%; margin: 0; padding: 0;}</style>
+    <style>#map {position: absolute; top: 0; bottom: 0; right: 0; left: 0;}</style>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <style>
+        #map_9105bc777924ad4441813a6c49f0cbe9 {
+            position: relative;
+            width: 100.0%;
+            height: 100.0%;
+            left: 0.0%;
+            top: 90px;
+        }
+        .leaflet-container { 
+            font-size: 1rem; 
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+        }
+        #map-container {
+            
+            position: absolute;
+            z-index: 1000;
+            width: 100%;
+            height: 90%; /* Adjust the height as needed */
+        }
+        #map-title {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px;
+            z-index: 99;
+            background-color: #4CAF50; /* Green background */
+            color: white; /* White text */
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            animation: fadeInDown 1s ease-in-out;
+        }
+        #map-info {
+            position: fixed;
+            top: 0; 
+            right: 20px; 
+            background-color: rgba(255, 255, 255, 0.8); 
+            padding: 10px;
+            border-radius: 10px;
+            animation: fadeInUp 1s ease-in-out;
+        }
+        #map-info p {
+            margin: 5px 0;
+            font-size: 18px;
+            color: #333;
+        }
+        @keyframes fadeInDown {
+            0% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes fadeInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+    
+</head>
+<body>
+
+    <form id="csrf-token-form">
+        {% csrf_token %}
+    </form>
+    <div id="map-container">
+        <div id="map-title">
+            <h1>Oran City Short Path</h1>
+            <div id="map-info">
+                <p id="distance"></p>
+                <p id="estimated-time"></p>
+            </div>
+        </div>
+        <div id="map_9105bc777924ad4441813a6c49f0cbe9"></div>
+    </div>
+
+    <script src="{% static 'tickman-icon1.png' %}"></script>
+</body>
+<script>
+    var map = L.map("map_9105bc777924ad4441813a6c49f0cbe9", {
+        center: [35.6950253 , -0.6480174],
+        crs: L.CRS.EPSG3857,
+        zoom: 13.5,
+        zoomControl: true,
+        preferCanvas: false,
+    });
+
+    var tileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors",
+        maxZoom: 19
+    }).addTo(map);
+
+    var startMarker, endMarker;
+    var startPoint, endPoint;
+
+
+    function getCookie(name) {
+        var cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            var cookies = document.cookie.split(';');
+            for (var i = 0; i < cookies.length; i++) {
+                var cookie = jQuery.trim(cookies[i]);
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    map.on('click', function(e) {
+        if (!startMarker) {
+            startPoint = e.latlng;
+            startMarker = L.marker(startPoint).addTo(map).bindPopup("Start Point").openPopup();
+        } else if (!endMarker) {
+            endPoint = e.latlng;
+            endMarker = L.marker(endPoint).addTo(map).bindPopup("End Point").openPopup();
+            
+
+            var csrftoken = getCookie('csrftoken');
+
+            $.ajax({
+                url: "/calculate_path",
+                type: "POST",
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                },
+                contentType: "application/json",
+                data: JSON.stringify({ start: { lat: startPoint.lat, lng: startPoint.lng }, end: { lat: endPoint.lat, lng: endPoint.lng } }),
+                dataType: "json",
+                success: function(data) {
+                                            // Show distance and estimated time
+                                            var distance = data.distance;
+                                            var estimatedTime = data.estimated_time_minutes;
+                    
+                                            document.getElementById('distance').innerText = 'Distance: ' + distance.toFixed(2) + ' km';
+                                            document.getElementById('estimated-time').innerText = 'Estimated Time: ' + estimatedTime.toFixed(2) + ' minutes';
+                    
+                    console.log("Path data received from server:", data);
+                    if (data.path) {
+        
+        var path = data.path;
+        var path = path.map(coord => [coord[1], coord[0]]); 
+                        var polyline = L.polyline(path, { color: 'red' }).addTo(map);
+                        console.log("Polyline added to the map:", polyline);
+
+
+
+      
+
+                        animateWalkingMan(path);
+
+                    } else {
+                        console.error("Error received from server:", data.error);
+                    }
+                },
+                error: function(xhr, errmsg, err) {
+                    console.log(xhr.status + ": " + xhr.responseText); // Log error message
+                }
+            });
+        }
+    });
+
+    function animateWalkingMan(path) {
+        var line = path
+        var markerIndex = 0;
+        var stickmanIcon = L.icon({
+            iconUrl: "{% static 'tickman-icon1.png' %}" ,
+            iconSize: [55, 65],
+            iconAnchor: [35, 40],
+        });
+
+        function animate() {
+            if (markerIndex === 0) {
+                var startMarker = L.marker(line[markerIndex], { icon: stickmanIcon }).addTo(map);
+                startMarker.bindPopup("Hello follow me plz !").openPopup();
+
+                setTimeout(function() {
+                    map.removeLayer(startMarker);
+                    markerIndex++;
+                    animate();
+                }, 2000);
+            } else {
+                if (markerIndex < line.length - 1) {
+                    var marker = L.marker(line[markerIndex], { icon: stickmanIcon }).addTo(map);
+                    marker.bindPopup("Point " + markerIndex);
+                    markerIndex++;
+                    setTimeout(function() {
+                        map.removeLayer(marker);
+                        animate();
+                    }, 150);
+                } else {
+                    var endMarker = L.marker(line[markerIndex], { icon: stickmanIcon }).addTo(map);
+                    endMarker.bindPopup("On est arrivée !").openPopup();
+                }
+            }
+        }
+
+        animate();
+    }
+</script>
+</html>
